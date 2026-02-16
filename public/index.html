@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEST APPLICATION</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 TEST APPLICATION</h1>
+            <div class="header-stats">
+                <div class="stat-card">
+                    <span class="stat-label">Total Services</span>
+                    <span class="stat-value" id="totalServices">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Running</span>
+                    <span class="stat-value running" id="runningServices">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Stopped</span>
+                    <span class="stat-value stopped" id="stoppedServices">0</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="controls">
+            <button class="btn btn-success" onclick="startAllServices()">▶ Start All</button>
+            <button class="btn btn-danger" onclick="stopAllServices()">⏹ Stop All</button>
+            <button class="btn btn-secondary" onclick="refreshServices()">🔄 Refresh</button>
+        </div>
+
+        <div class="table-container">
+            <table id="servicesTable">
+                <thead>
+                    <tr>
+                        <th>Service ID</th>
+                        <th>Service Name</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>CPU (%)</th>
+                        <th>Memory (%)</th>
+                        <th>Network (MB/s)</th>
+                        <th>Uptime</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="servicesBody">
+                    <!-- Services will be populated here -->
+                </tbody>
+            </table>
+        </div>
+
+        <div id="notification" class="notification"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
+
+
+
+
