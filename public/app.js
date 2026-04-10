@@ -37,7 +37,11 @@ function updateStats(services) {
 function renderServicesTable(services) {
     const tbody = document.getElementById('servicesBody');
     
-    tbody.innerHTML = services.map(service => `
+    tbody.innerHTML = services.map(service => {
+        const latencyCount = service.latencyRequests ?? 0;
+        const avg = latencyCount > 0 ? (service.averageResponseMs ?? 0).toFixed(2) : '—';
+        const p90 = latencyCount > 0 ? (service.p90ResponseMs ?? 0).toFixed(2) : '—';
+        return `
         <tr>
             <td><strong>${service.id}</strong></td>
             <td>${service.name}</td>
@@ -63,6 +67,8 @@ function renderServicesTable(services) {
                 </span>
             </td>
             <td>${formatUptime(service.uptime)}</td>
+            <td><span class="metric">${avg}</span></td>
+            <td><span class="metric">${p90}</span></td>
             <td class="actions">
                 ${service.status === 'stopped' 
                     ? `<button class="btn btn-success btn-small" onclick="startService('${service.id}')">▶ Start</button>`
@@ -70,7 +76,8 @@ function renderServicesTable(services) {
                 }
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 }
 
 // Get metric color class based on value

@@ -7,7 +7,61 @@ const os = require('os');
 const app = express();
 const PORT = 9000;
 
+// Response-time samples (avg + p90) per service, from GET/POST /api/services/:id/...
+const LATENCY_MAX_SAMPLES = 2000;
+const serviceLatencySamples = new Map();
+let validServiceIds = new Set();
+
+function computeLatencyStats(entry) {
+  if (!entry || entry.samples.length === 0) {
+    return { count: 0, averageMs: 0, p90Ms: 0 };
+  }
+  const samples = entry.samples;
+  const count = samples.length;
+  const sum = samples.reduce((a, b) => a + b, 0);
+  const sorted = [...samples].sort((a, b) => a - b);
+  const idx = Math.ceil(0.9 * sorted.length) - 1;
+  const p90Ms = sorted[Math.max(0, idx)];
+  return {
+    count,
+    averageMs: sum / count,
+    p90Ms
+  };
+}
+
+function recordServiceLatency(serviceId, ms) {
+  let entry = serviceLatencySamples.get(serviceId);
+  if (!entry) {
+    entry = { samples: [] };
+    serviceLatencySamples.set(serviceId, entry);
+  }
+  entry.samples.push(ms);
+  if (entry.samples.length > LATENCY_MAX_SAMPLES) {
+    entry.samples.shift();
+  }
+}
+
+function getServiceLatencyStats(serviceId) {
+  return computeLatencyStats(serviceLatencySamples.get(serviceId));
+}
+
 app.use(cors());
+app.use((req, res, next) => {
+  const start = process.hrtime.bigint();
+  res.on('finish', () => {
+    const ms = Number(process.hrtime.bigint() - start) / 1e6;
+    const id = req.params && req.params.id;
+    if (id && req.route && req.route.path) {
+      const p = req.route.path;
+      if (p === '/api/services/:id' || p === '/api/services/:id/start' || p === '/api/services/:id/stop') {
+        if (validServiceIds.has(id)) {
+          recordServiceLatency(id, ms);
+        }
+      }
+    }
+  });
+  next();
+});
 app.use(express.json());
 app.use(express.static('public'));
 
@@ -138,8 +192,14 @@ class SystemMetrics {
     };
   }
 
-  // Get system info
+  // Get system info (with fallbacks for restricted environments where os.uptime() may throw EPERM)
   getSystemInfo() {
+    let uptime = 0;
+    try {
+      uptime = os.uptime();
+    } catch (_) {
+      uptime = 0;
+    }
     return {
       platform: os.platform(),
       arch: os.arch(),
@@ -147,7 +207,7 @@ class SystemMetrics {
       cpuCount: os.cpus().length,
       cpuModel: os.cpus()[0]?.model || 'Unknown',
       totalMemoryMB: Math.round(os.totalmem() / (1024 * 1024)),
-      uptime: os.uptime()
+      uptime
     };
   }
 
@@ -382,6 +442,7 @@ class Service {
   }
 
   getMetrics() {
+    const lat = getServiceLatencyStats(this.id);
     return {
       id: this.id,
       name: this.name,
@@ -390,23 +451,27 @@ class Service {
       cpu: parseFloat(this.cpu.toFixed(2)),
       memory: parseFloat(this.memory.toFixed(2)),
       network: parseFloat(this.network.toFixed(2)),
-      uptime: this.startTime ? Math.floor((Date.now() - this.startTime) / 1000) : 0
+      uptime: this.startTime ? Math.floor((Date.now() - this.startTime) / 1000) : 0,
+      latencyRequests: lat.count,
+      averageResponseMs: lat.count ? parseFloat(lat.averageMs.toFixed(2)) : 0,
+      p90ResponseMs: lat.count ? parseFloat(lat.p90Ms.toFixed(2)) : 0
     };
   }
 }
 
 // Initialize services
-Logger.info('Initializing TEST APPLICATION');
+Logger.info('Initializing Hyundai Applications');
 const services = [
-  new Service('svc-001', 'API Gateway', 'gateway'),
-  new Service('svc-002', 'Authentication Service', 'auth'),
-  new Service('svc-003', 'Database Service', 'database'),
-  new Service('svc-004', 'Cache Service', 'cache'),
-  new Service('svc-005', 'Message Queue', 'messaging'),
-  new Service('svc-006', 'Payment Service', 'payment'),
-  new Service('svc-007', 'Notification Service', 'notification'),
-  new Service('svc-008', 'Analytics Service', 'analytics')
+  new Service('svc-001', 'Hyundaiusa.com', 'hyundaiusa'),
+  new Service('svc-002', 'Genesis.com', 'genesis'),
+  new Service('svc-003', 'Hyundai-Dae', 'hyundai-dae'),
+  new Service('svc-004', 'Genesis-RAE', 'genesis-rae'),
+  new Service('svc-005', 'MyHyundai', 'myhyundai'),
+  new Service('svc-006', 'MyGenesis', 'mygenesis'),
+  new Service('svc-007', 'MyHyundai-Bluelink', 'myhyundai-bluelink'),
+  new Service('svc-008', 'GenesisIntelligentAssistant', 'genesis-intelligent-assistant')
 ];
+validServiceIds = new Set(services.map((s) => s.id));
 Logger.info(`Initialized ${services.length} services`);
 
 // API Routes
@@ -539,7 +604,7 @@ app.get('/health', (req, res) => {
   
   res.json({ 
     status: 'UP',
-    application: 'TEST APPLICATION',
+    application: 'Hyundai Applications',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
     uptime: Math.floor(uptime),
@@ -582,7 +647,7 @@ app.listen(PORT, () => {
   const memDetails = systemMetrics.getMemoryDetails();
   
   Logger.info('='.repeat(60));
-  Logger.info('TEST APPLICATION Started');
+  Logger.info('Hyundai Applications Started');
   Logger.info('='.repeat(60));
   Logger.info(`Server running on http://localhost:${PORT}`);
   Logger.info(`API available at http://localhost:${PORT}/api`);

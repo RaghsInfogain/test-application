@@ -1,7 +1,7 @@
 {
   "name": "test-application",
   "version": "1.0.0",
-  "description": "TEST APPLICATION for SRE monitoring POC with simulated services",
+  "description": "Hyundai Applications — SRE monitoring POC with simulated services",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
